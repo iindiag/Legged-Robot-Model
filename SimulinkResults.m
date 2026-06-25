@@ -1,15 +1,15 @@
 % Extracting the results from the LeggedRobotSim2D file
 
-theta_2 = out.theta_2.Data; % The gait generated used in the PD controller
-theta_2Time = out.theta_2.Time;
-
-figure(1)
-plot(theta_2Time, theta_2)
-title('Gait Generated Angle Offsets over Time (Simulink)')
-legend('Knee Joint')
-xlabel('Time (s)')
-ylabel('Angle (radians)')
-grid on
+%theta_2 = out.theta_2.Data; % The gait generated used in the PD controller
+%theta_2Time = out.theta_2.Time;
+%
+%figure(1)
+%plot(theta_2Time, theta_2)
+%title('Gait Generated Angle Offsets over Time (Simulink)')
+%legend('Knee Joint')
+%xlabel('Time (s)')
+%ylabel('Angle (radians)')
+%grid on
 
 C_zCoords = out.C_z.Data; % The z-Coordinate of the movement of the leg
 % from its mechanics and the PD controller

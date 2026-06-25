@@ -97,8 +97,6 @@ title('Gait Generated Angle Offsets over Time (MATLAB)')
 CartesianCoords = forwardKinematics(l_1, l_2, theta);
 
 % Plotting the Cartesian coordinates of the foot position
-
-figure(1);
 subplot(2, 2, 2);
 plot(CartesianCoords(:, 1), CartesianCoords(:, 2), 'b.')
 xlabel('x Position (m)');
@@ -107,7 +105,6 @@ title('Foot Trajectory');
 grid on;
 
 % Plotting the x and z coordinates against t
-figure(1);
 subplot(2, 2, 3);
 plot(t, CartesianCoords(:,1), 'Color', [1 0.4 0.7])
 hold on
@@ -155,8 +152,7 @@ foot_z = CartesianCoords(:,2);
 %close(v);
 
 %%
-% Simulating the joint dynamics of the robot (actual points, decoupled 
-% model)
+% Simulating the joint dynamics of the robot (actual points)
 
 % Extracting the relevant values from database
 % Dimensions:
@@ -179,18 +175,14 @@ K_p = db.PDC.K_p;
 theta_act = db.initial.theta_act;
 omega_act = db.initial.omega_act;
 
-g = -9.81;
+g = 9.81;
 N = length(t);
 
 % Initialising arrays to store theta, omega and current values at each 
 % time step
-thetaLogDecoupled = zeros(N,2);
-omegaLogDecoupled = zeros(N,2);
-currentLogDecoupled = zeros(N,2);
-
-thetaLogCoupled = zeros(N,2);
-omegaLogCoupled = zeros(N,2);
-currentLogCoupled = zeros(N,2);
+thetaLog = zeros(N,2);
+omegaLog = zeros(N,2);
+currentLog = zeros(N,2);
 
 function current = PDController(K_p, K_d, theta_ref, theta_act, ...
     omega_ref, omega_act)
@@ -198,41 +190,40 @@ function current = PDController(K_p, K_d, theta_ref, theta_act, ...
 % K_p = proportional gain
 % K_d = derivative gain
 
-current = K_p * (theta_ref - theta_act) + ...
-    K_d * (omega_ref - omega_act);
+    currentHip = K_p * (theta_ref(1) - theta_act(1)) + ...
+        K_d * (omega_ref(1) - omega_act(1));
+
+    currentKnee = K_p * (theta_ref(2) - theta_act(2)) + ...
+        K_d * (omega_ref(2) - omega_act(2));
+    
+    current = [currentHip; currentKnee];
 
 end
 
-function [theta_act, omega_act] = dynamics(theta_act, omega_act, b, ...
-    I_1, I_2, tau, dt)
-% Calculates actual values for the trajectory of the joints based on
-% dynamics, currently models the simplest level of dynamics - joints are 
-% not coupled 
-
-    I = [I_1, I_2];
-    
-    % Acceleration 
-    alpha = (tau - b.*omega_act) ./ I;
-    
-    % Integrating velocity numerically - explicit Euler method
-    omega_act = omega_act + alpha * dt;
-    
-    % Integrating position numerically
-    theta_act = theta_act + omega_act * dt;
-
-end
-
-function [theta_act, omega_act] = dynamicsCoupled(theta_act, ...
+function [theta_act, omega_act] = dynamics(theta_act, ...
     omega_act, b, I_1, I_2, m_1, m_2, r_1, r_2, g, tau, dt, l_1)
 % Calculates actual values for the trajectory of the joints based on
-% dynamics - joints are coupled 
+% dynamics:
+% first link -> thigh
+% second link -> shin
+% I_1 = inertia of the first link
+% I_2 = inertia of the second link
+% m_1 = mass of the first link
+% m_2 = mass of the second link
+% r_1 = COM of the first link
+% r_2 = COM of the second link
+% l_1 = length of the first link
+
+    % Ensures all vectors are the correct orientation
+    theta_act = theta_act(:);
+    omega_act = omega_act(:);
+    tau = tau(:);
 
     theta_1 = theta_act(1);
     theta_2 = theta_act(2);
     
     omega_1 = omega_act(1);
     omega_2 = omega_act(2);
-
 
     % Inertia matrix
     M11 = I_1 + I_2 ...
@@ -262,28 +253,33 @@ function [theta_act, omega_act] = dynamicsCoupled(theta_act, ...
     G = [G1;
         G2];
 
-    % Joint damping
-    B = [b*omega_1;
-        b*omega_2];
-    
     % Acceleration 
     qdot = [omega_1;
         omega_2];
 
-    alpha = M \ (tau(:) - C*qdot - G - B);
-    
+    % Rearranging the general robot arm dynamic equation so that the result
+    % is alpha, representing q double dot
+    alpha = M \ (tau - C*qdot - G);
+
     % Integrating velocity numerically - explicit Euler method
-    omega_act = omega_act + alpha.'* dt;
-    
+    omega_new = omega_act + alpha * dt;
+
     % Integrating position numerically
-    theta_act = theta_act + omega_act * dt;
+    theta_new = theta_act + omega_new * dt;
+
+    omega_act = omega_new;
+
+    theta_act = theta_new;
 
 end
 
 function tau = MotorCurrent(current, K_t)
 % Calculates the torque produced by the PD controller
 
-    tau = current * K_t;
+    tauHip = current(1) * K_t;
+    tauKnee = current(2) * K_t;
+
+    tau = [tauHip; tauKnee];
 
 end
 
@@ -296,8 +292,8 @@ omega_refTraj = sineWaveDeriv(theta_ref, t, f_hip, f_knee, phi_hip, ...
 for k = 1:N
 
     % Generating the reference theta and omega values at time step k
-    theta_ref_k = theta_refTraj(k,:);
-    omega_ref_k = omega_refTraj(k,:);
+    theta_ref_k = theta_refTraj(k,:).';
+    omega_ref_k = omega_refTraj(k,:).';
 
     % Calculating controller current
     current = PDController(K_p, K_d, theta_ref_k, theta_act, ...
@@ -307,111 +303,77 @@ for k = 1:N
     tau = MotorCurrent(current, K_t);
 
     % Calculating the actual values for the next time step k+1
-    [theta_act, omega_act] = dynamics(theta_act, omega_act, b, I_1, ...
-        I_2, tau, dt);
-
-    % Storing results
-    thetaLogDecoupled(k,:) = theta_act;
-    omegaLogDecoupled(k,:) = omega_act;
-    currentLogDecoupled(k,:) = current;
-
-end
-
-% Resetting state
-theta_act = db.initial.theta_act;
-omega_act = db.initial.omega_act;
-
-for k = 1:N
-
-    % Generating the reference theta and omega values at time step k
-    theta_ref_k = theta_refTraj(k,:);
-    omega_ref_k = omega_refTraj(k,:);
-
-    % Calculating controller current
-    current = PDController(K_p, K_d, theta_ref_k, theta_act, ...
-        omega_ref_k, omega_act);
-
-    % Converting current to motor torque
-    tau = MotorCurrent(current, K_t);
-
-    % Calculating the actual values for the next time step k+1
-    [theta_act, omega_act] = dynamicsCoupled(theta_act, ...
+    [theta_act, omega_act] = dynamics(theta_act, ...
         omega_act, b, I_1, I_2, m_1, m_2, r_1, r_2, g, tau, dt, l_1);
 
     % Storing results
-    thetaLogCoupled(k,:) = theta_act;
-    omegaLogCoupled(k,:) = omega_act;
-    currentLogCoupled(k,:) = current;
+    thetaLog(k,:) = theta_act;
+    omegaLog(k,:) = omega_act;
+    currentLog(k,:) = current;
 
 end
 
 figure(2)
 
-% Plotting ref Vs act for the hip joint (decoupled)
-subplot(3,1,1)
+% Plotting ref Vs act for the hip joint
+subplot(2,1,1)
 plot(t, theta_refTraj(:,1), 'LineWidth', 1.5, 'Color', [1 0.4 0.7])
 hold on
-plot(t, thetaLogDecoupled(:,1), '--', 'LineWidth', 1.5, 'Color', 'b')
+plot(t, thetaLog(:,1), '--', 'LineWidth', 1.5, 'Color', 'b')
 legend('Generated Gait (Reference)','Dynamic Model (Actual)')
 title('Hip Joint Angle')
 ylabel('\theta_1 (rad)')
 xlabel('Time (s)')
 grid on
 
-% Plotting ref Vs act for the knee joint (decoupled)
-subplot(3,1,2)
+% Plotting ref Vs act for the knee joint
+subplot(2,1,2)
 plot(t, theta_refTraj(:,2), 'LineWidth', 1.5, 'Color', [1 0.4 0.7])
 hold on
-plot(t, thetaLogDecoupled(:,2), '--', 'LineWidth', 1.5, 'Color', 'b')
+plot(t, thetaLog(:,2), '--', 'LineWidth', 1.5, 'Color', 'b')
 legend('Generated Gait (Reference)','Dynamic Model (Actual)')
 title('Knee Joint Angle')
 ylabel('\theta_2 (rad)')
 xlabel('Time (s)')
 grid on
 
-% Plotting the current generated by the PD controller for the hip and knee
-% joints (decoupled)
-subplot(3,1,3)
-plot(t, currentLogDecoupled)
-legend('Hip Joint','Knee Joint')
-title('Current Generated by the PD Controller')
-ylabel('i(t)')
-xlabel('Time (s)')
-grid on
+
+dynamicCoords = forwardKinematics(l_1, l_2, thetaLog);
+C_zCoords = dynamicCoords(:,2);
 
 figure(3)
 
-% Plotting ref Vs act for the hip joint (decoupled)
+% Plotting the z-Coordinate of the movement of the leg from its mechanics 
+% and the PD controller
 subplot(3,1,1)
-plot(t, theta_refTraj(:,1), 'LineWidth', 1.5, 'Color', [1 0.4 0.7])
-hold on
-plot(t, thetaLogCoupled(:,1), '--', 'LineWidth', 1.5, 'Color', 'b')
-legend('Generated Gait (Reference)','Dynamic Model (Actual)')
-title('Hip Joint Angle')
-ylabel('\theta_1 (rad)')
+plot(t, C_zCoords)
+title('Measured z-Coordinate of Foot over Time')
+legend('Knee Joint')
 xlabel('Time (s)')
+ylabel('z Position (m)')
 grid on
 
-% Plotting ref Vs act for the knee joint (coupled)
+% Plotting the angle offset of the knee joint from
+% movement of the leg as a result of its mechanics and the PD controller
 subplot(3,1,2)
-plot(t, theta_refTraj(:,2), 'LineWidth', 1.5, 'Color', [1 0.4 0.7])
-hold on
-plot(t, thetaLogCoupled(:,2), '--', 'LineWidth', 1.5, 'Color', 'b')
-legend('Generated Gait (Reference)','Dynamic Model (Actual)')
-title('Knee Joint Angle')
-ylabel('\theta_2 (rad)')
+plot(t, omegaLog(:,2))
+title('Measured Angular Velocity over Time')
+legend('Knee Joint')
+ylabel('Angular Velocity (m/s)')
 xlabel('Time (s)')
 grid on
 
 % Plotting the current generated by the PD controller for the hip and knee
-% joints (coupled)
+% joints
 subplot(3,1,3)
-plot(t, currentLogCoupled)
+plot(t, currentLog)
 legend('Hip Joint','Knee Joint')
 title('Current Generated by the PD Controller')
 ylabel('i(t)')
 xlabel('Time (s)')
 grid on
+
+
 
 %%
 % Simulating the Morphological Computation (MC) measures
@@ -427,7 +389,7 @@ C_zLog = zeros(N,1);
 for k = 1:N
     
     % Calculating the C_z values for the foot position
-    coords = forwardKinematics(l_1, l_2, thetaLogDecoupled(k,:));
+    coords = forwardKinematics(l_1, l_2, thetaLog(k,:));
     C_zLog(k) = coords(:,2);
 
 end
@@ -508,16 +470,16 @@ function MCVals = MCCalculation(B, H, C_zLog, currentLog, thetaLog, t)
 
 end
 
-MCVals = MCCalculation(B, H, C_zLog, currentLogCoupled, ...
-    thetaLogCoupled, t);
+MCVals = MCCalculation(B, H, C_zLog, currentLog, ...
+    thetaLog, t);
 
 MCSmooth = smoothdata(MCVals, 'gaussian', 5);
 
-figure(4)
-plot(t(1:end-1), MCSmooth)
-xlabel('Time (s)')
-title('Morphological Computation over Time')
-grid on
+%figure(4)
+%plot(t(1:end-1), MCSmooth)
+%xlabel('Time (s)')
+%title('Morphological Computation over Time')
+%grid on
 
 %%
 % Calculating the Cost of Transport (COT) from the simulation
@@ -573,7 +535,7 @@ g = 9.81;
 d = sum(sqrt(diff(foot_x).^2 + diff(foot_z).^2));
 
 % Power consumption
-P = PowerConsumption(K_t, currentLogCoupled, omegaLogCoupled);
+P = PowerConsumption(K_t, currentLog, omegaLog);
 
 % Cumulative energy consumption
 ELog = cumtrapz(t,P);
@@ -581,30 +543,30 @@ ELog = cumtrapz(t,P);
 % Cumulative cost of transport
 COT = CostOfTransport(ELog,m,g,d);
 
-figure(5)
-plot(t, P)
-hold on
-plot(t, ELog)
-hold on
-plot(t, COT)
-xlabel('Time (s)')
-title('Movement Requirements')
-legend('Power Consumption', 'Cumulative Energy Consumption', ...
-    'Cumulative Cost of Transport')
-grid on
+%figure(5)
+%plot(t, P)
+%hold on
+%plot(t, ELog)
+%hold on
+%plot(t, COT)
+%xlabel('Time (s)')
+%title('Movement Requirements')
+%legend('Power Consumption', 'Cumulative Energy Consumption', ...
+%    'Cumulative Cost of Transport')
+%grid on
 
-figure(6)
-labels = categorical({'Cost of Transport','Morphological Computation'});
-means = [mean(COT), mean(MCSmooth)];
-stds  = [std(COT), std(MCSmooth)];
-
-b = bar(labels, means);
-b.FaceColor = 'flat';
-b.CData = [0.7 0.2 0.3; 0 0 0.8];
-hold on
-errorbar(labels, means, stds, 'k', 'LineStyle', 'none')
-ylabel('Value')
-title('Mean ± Standard Deviation of MC and COT')
-grid on
+%figure(6)
+%labels = categorical({'Cost of Transport','Morphological Computation'});
+%means = [mean(COT), mean(MCSmooth)];
+%stds  = [std(COT), std(MCSmooth)];
+%
+%b = bar(labels, means);
+%b.FaceColor = 'flat';
+%b.CData = [0.7 0.2 0.3; 0 0 0.8];
+%hold on
+%errorbar(labels, means, stds, 'k', 'LineStyle', 'none')
+%ylabel('Value')
+%title('Mean ± Standard Deviation of MC and COT')
+%grid on
 
 
