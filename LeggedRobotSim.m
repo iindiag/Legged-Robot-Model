@@ -200,8 +200,18 @@ function current = PDController(K_p, K_d, theta_ref, theta_act, ...
 
 end
 
-function [theta_act, omega_act] = dynamics(theta_act, ...
-    omega_act, b, I_1, I_2, m_1, m_2, r_1, r_2, g, tau, dt, l_1)
+function tau = MotorCurrent(current, K_t)
+% Calculates the torque produced by the PD controller
+
+    tauHip = current(1) * K_t;
+    tauKnee = current(2) * K_t;
+    
+    tau = [tauHip; tauKnee];
+
+end
+
+function [theta_act, omega_act] = dynamicsEuler(theta_act, ...
+    omega_act, I_1, I_2, m_1, m_2, r_1, r_2, g, tau, dt, l_1)
 % Calculates actual values for the trajectory of the joints based on
 % dynamics:
 % first link -> thigh
@@ -259,7 +269,9 @@ function [theta_act, omega_act] = dynamics(theta_act, ...
 
     % Rearranging the general robot arm dynamic equation so that the result
     % is alpha, representing q double dot
-    alpha = M \ (tau - C*qdot - G);
+    alpha = M \ (tau - C*qdot - G); % Backslash performs left matrix
+                                    % division efficiently (faster and more
+                                    % numerically stable)
 
     % Integrating velocity numerically - explicit Euler method
     omega_new = omega_act + alpha * dt;
@@ -273,15 +285,101 @@ function [theta_act, omega_act] = dynamics(theta_act, ...
 
 end
 
-function tau = MotorCurrent(current, K_t)
-% Calculates the torque produced by the PD controller
+function dx = dynamicsOde45(t, x, db)
+% The t argument is required as this function is to be passed through the
+% ode45 solver
 
-    tauHip = current(1) * K_t;
-    tauKnee = current(2) * K_t;
+    % Unpacking the state vectors
+    q = x(1:2);
+    dq = x(3:4);
 
-    tau = [tauHip; tauKnee];
+    % Unpacking the variables from the database in the function workspace
+    % Dimensions
+    m_1 = db.dims.m_1;
+    m_2 = db.dims.m_2;
+    l_1 = db.dims.l_1;
+    l_2 = db.dims.l_2;
+
+    % Dynamic params.
+    I_1 = db.dynamics.I_1;
+    I_2 = db.dynamics.I_2;
+    r_1 = db.dynamics.r_1;
+    r_2 = db.dynamics.r_2;
+
+    % PD controller params.
+    K_p = db.PDC.K_p;
+    K_d = db.PDC.K_d;
+    K_t = db.PDC.K_t;
+
+    % Gait params.
+    theta_amp = db.gait.theta_amp;
+    phi_hip = db.gait.phi_hip1;
+    phi_knee = db.gait.phi_knee1;
+    f_hip = db.gait.f_hip;
+    f_knee = db.gait.f_knee;
+    
+    g = 9.81;
+
+    % Gait trajectory
+    theta_refTraj = sineWave(theta_amp, t, f_hip, f_knee, phi_hip, ...
+        phi_knee);
+    omega_refTraj = sineWaveDeriv(theta_amp, t, f_hip, f_knee, phi_hip, ...
+        phi_knee);
+
+    % Controller
+    current = PDController(K_p, K_d, theta_refTraj, q, ...
+        omega_refTraj, dq);
+
+    % Actuator
+    tau = MotorCurrent(current, K_t);
+
+    % Dynamics
+    M11 = I_1 + I_2 ...
+        + m_1*r_1^2 ...
+        + m_2*(l_1^2 + r_2^2 + 2*l_1*r_2*cos(q(2)));
+
+    M12 = I_2 ...
+        + m_2*(r_2^2 + l_1*r_2*cos(q(2)));
+
+    M22 = I_2 + m_2*r_2^2;
+
+    M = [M11 M12;
+        M12 M22];
+
+    % Coriolis matrix
+    h = m_2*l_1*r_2*sin(q(2));
+
+    C = [-h*dq(2), -h*(dq(1)+dq(2));
+        h*dq(1), 0];
+
+    % Gravity vector
+    G1 = (m_1*r_1 + m_2*l_1)*g*sin(q(1)) ...
+        + m_2*r_2*g*sin(q(1) + q(2));
+
+    G2 = m_2*r_2*g*sin(q(1) + q(2));
+
+    G = [G1;
+        G2];
+
+    ddq = M \ (tau - C*dq - G);
+
+    dx = [dq;
+        ddq];
 
 end
+
+% Calculating the dynamic coordinates for the foot position
+dynamicCoords = forwardKinematics(l_1, l_2, thetaLog);
+
+% Plotting the z-Coordinate of the movement of the leg from its mechanics 
+% and the PD controller
+subplot(3,1,1)
+plot(t, dynamicCoords(:,2))
+title('Measured z-Coordinate of Foot over Time')
+legend('Foot Position')
+xlabel('Time (s)')
+ylabel('z Position (m)')
+grid on
 
 % Calculated the gait generated trajectories of the joints for position and
 % angular velocity
@@ -303,13 +401,43 @@ for k = 1:N
     tau = MotorCurrent(current, K_t);
 
     % Calculating the actual values for the next time step k+1
-    [theta_act, omega_act] = dynamics(theta_act, ...
-        omega_act, b, I_1, I_2, m_1, m_2, r_1, r_2, g, tau, dt, l_1);
+    [theta_act, omega_act] = dynamicsEuler(theta_act, ...
+        omega_act, I_1, I_2, m_1, m_2, r_1, r_2, g, tau, dt, l_1);
 
     % Storing results
     thetaLog(k,:) = theta_act;
     omegaLog(k,:) = omega_act;
     currentLog(k,:) = current;
+
+end
+
+% Integrating using ode45
+x0 = [0; 0; 0; 0]; % Starting from rest
+tspan = [0 timespan];
+[t_ode, x] = ode45(@(t_ode,x) dynamicsOde45(t_ode, x, db), tspan, x0);
+
+N_ode = length(t_ode);
+
+currentLog_ode = zeros(N,2);
+tauLog_ode = zeros(N,2);
+
+for k = 1:N_ode
+
+    q  = x(k,1:2)';
+    dq = x(k,3:4)';
+
+    theta_refTraj = sineWave(theta_ref, t_ode(k), f_hip, f_knee, ...
+        phi_hip, phi_knee);
+
+    omega_refTraj = sineWaveDeriv(theta_ref, t_ode(k), f_hip, f_knee, ...
+        phi_hip, phi_knee);
+
+    current = PDController(K_p, K_d, theta_refTraj, q, omega_refTraj, dq);
+
+    tau = MotorCurrent(current, K_t);
+
+    currentLog_ode(k,:) = current';
+    tauLog_ode(k,:)     = tau';
 
 end
 
@@ -336,7 +464,6 @@ title('Knee Joint Angle')
 ylabel('\theta_2 (rad)')
 xlabel('Time (s)')
 grid on
-
 
 dynamicCoords = forwardKinematics(l_1, l_2, thetaLog);
 C_zCoords = dynamicCoords(:,2);
@@ -369,9 +496,50 @@ subplot(3,1,3)
 plot(t, currentLog)
 legend('Hip Joint','Knee Joint')
 title('Current Generated by the PD Controller')
-ylabel('i(t)')
+ylabel('Current (Amps)')
 xlabel('Time (s)')
 grid on
+
+figure(4)
+
+subplot(2, 1, 1)
+plot(t_ode, x(:,1)); hold on;
+plot(t_ode, x(:,2));
+xlabel('Time (s)');
+ylabel('Angle (rad)');
+legend('Hip Joint','Knee Joint');
+grid on;
+title('Joint Angle Positions (ode45)');
+
+subplot(2, 1, 2)
+plot(t_ode, x(:,3)); hold on;
+plot(t_ode, x(:,4));
+xlabel('Time (s)');
+ylabel('Angle (rad)');
+legend('Hip Joint','Knee Joint');
+grid on;
+title('Joint Angular Velocity (ode45)');
+
+figure(5)
+
+subplot(2, 1, 1)
+plot(t_ode, currentLog_ode(:,1)); hold on;
+plot(t_ode, currentLog_ode(:,2));
+xlabel('Time (s)');
+ylabel('Current (A)');
+legend('Hip','Knee');
+grid on;
+title('Motor Current');
+
+subplot(2, 1, 2)
+plot(t_ode, tauLog_ode(:,1)); hold on;
+plot(t_ode, tauLog_ode(:,2));
+xlabel('Time (s)');
+ylabel('Torque (Nm)');
+legend('Hip','Knee');
+grid on;
+title('Joint Torque');
+
 
 
 
