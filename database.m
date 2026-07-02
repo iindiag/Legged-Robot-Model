@@ -6,7 +6,7 @@ function db = database() % To call func in another script, must match the
 % name of the file
 
     % Time
-    db.time.t = linspace(0, 20, 1000); % seconds
+    db.time.t = linspace(0, 15, 1000); % seconds
     db.time.timespan = db.time.t(end) - db.time.t(1);
     db.time.dt = db.time.t(2) - db.time.t(1);
     
@@ -22,7 +22,7 @@ function db = database() % To call func in another script, must match the
     db.initial.omega_act = [0 0];
     
     % Gait params.
-    db.gait.theta_amp = [pi / 8 pi / 16]; % Used as theta_ref in Eq 8
+    db.gait.theta_amp = [pi / 2 pi / 4]; % Used as theta_ref in Eq 8
     db.gait.phi_hip1 = 0;
     db.gait.phi_knee1 = pi /2;
     db.gait.phi_hip2 = pi; % Only needed in the Simulink simulation as
@@ -41,8 +41,8 @@ function db = database() % To call func in another script, must match the
     
     % PD controller params.
     db.PDC.K_t = 0.025; % Torque const. (NM/A)
-    db.PDC.K_d = 1;
-    db.PDC.K_p = 1;
+    db.PDC.K_d = 4;
+    db.PDC.K_p = 4;
     
     % MC params.
     db.MC.B = 100;
