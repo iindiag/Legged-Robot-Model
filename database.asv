@@ -23,7 +23,7 @@ function db = database() % To call func in another script, must match the
     db.initial.omega_act = [0 0];
     
     % Gait params.
-    db.gait.theta_amp = [pi / 2, pi / 4]; % Used as theta_ref in Eq 8
+    db.gait.theta_amp = [(1*pi) / 2 pi / ]; % Used as theta_ref in Eq 8
     db.gait.phi_hip1 = 0;
     db.gait.phi_knee1 = pi /2;
     db.gait.phi_hip2 = pi; % Only needed in the Simulink simulation as
