@@ -42,6 +42,9 @@ function db = database() % To call func in another script, must match the
     db.PDC.K_t = 0.025; % Torque const. (NM/A)
     db.PDC.K_d = 4;
     db.PDC.K_p = 4;
+
+    % 3D Simulink sim params.
+    db.threeD.sensorRadius = 0.008;
     
     % MC params.
     db.MC.B = 100;
