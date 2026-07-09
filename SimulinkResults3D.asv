@@ -11,12 +11,10 @@ normFHeel = out.normFHeel1.Data;
 normFToes = out.normFToe1.Data;
 
 figure(1)
-plot(tSpatialContact, squeeze(normFHeel(3,1,:)), 'Color', [1, 0.2, 0.6])
+plot(tSpatialContact, squeeze(normFHeel(3,1,:)))
 hold on;
-plot(tSpatialContact, squeeze(normFToes(3,1,:)), 'b')
-title('Normal Force at Food-Ground Contact')
-xlabel('Time (s)')
-ylabel('Normal Force (N)')
+plot(tSpatialContact, squeeze(normFToes(3,1,:)))
+title('Normal Force at Ground-Foot Contact')
 legend('Heel', 'Toes')
 grid on;
 
