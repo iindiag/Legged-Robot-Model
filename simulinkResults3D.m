@@ -7,17 +7,26 @@ C_zCoords = out.C_z.Data; % The z-Coordinate of the centre of the foot
 
 % From the Spatial Contact Force block:
 tSpatialContact = out.normFHeel1.Time;
-normFHeel = out.normFHeel1.Data;
-normFToes = out.normFToe1.Data;
+normFHeel1 = out.normFHeel1.Data;
+normFToe1 = out.normFToe1.Data;
+normFHeel2 = out.normFHeel1.Data;
+normFToe2 = out.normFToe1.Data;
 
 figure(1)
-plot(tSpatialContact, squeeze(normFHeel(3,1,:)), 'Color', [1, 0.2, 0.6])
+plot(tSpatialContact, squeeze(normFHeel1(3,1,:)), 'Color', [1, 0.2, 0.6])
 hold on;
-plot(tSpatialContact, squeeze(normFToes(3,1,:)), 'b')
+plot(tSpatialContact, squeeze(normFToe1(3,1,:)), 'b')
+hold on;
+plot(tSpatialContact, squeeze(normFHeel2(3,1,:)), '--')
+hold on;
+plot(tSpatialContact, squeeze(normFToe2(3,1,:)), '--')
 title('Normal Force at Food-Ground Contact')
 xlabel('Time (s)')
 ylabel('Normal Force (N)')
-legend('Heel', 'Toes')
+legend('Heel - Leg 1', 'Toes - Leg 1', 'Heel - Leg 2', 'Toes - Leg 2')
 grid on;
 
+totalNormF = normFHeel1(3,1,end) + normFToe1(3,1,end) + ...
+    normFHeel2(3,1,end) + normFToe2(3,1,end);
+disp(totalNormF)
 
