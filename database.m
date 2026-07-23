@@ -41,12 +41,12 @@ function db = database() % To call func in another script, must match the
     db.PDC.K_tr = 4;
     db.PDC.K_d = 12.5;
     db.PDC.K_p = 37.5;
-    db.PDC.hipK_dp = 12.5;
-    db.PDC.hipK_pp = 37.5;
-    db.PDC.hipK_dr = 30;
-    db.PDC.hipK_pr = 100;
-    db.PDC.kneeK_d = 12.5;
-    db.PDC.kneeK_p = 37.5;
+    db.PDC.hipK_dp = 50;
+    db.PDC.hipK_pp = 150;
+    db.PDC.hipK_dr = 50;
+    db.PDC.hipK_pr = 150;
+    db.PDC.kneeK_d = 50;
+    db.PDC.kneeK_p = 150;
 
     % 3D Simulink sim params.
     db.threeD.sensorRadius = 0.006;

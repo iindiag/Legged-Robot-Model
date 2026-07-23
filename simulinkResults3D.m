@@ -19,14 +19,16 @@ normF2 = out.normF2.Data;
 normF3 = out.normF3.Data;
 normF4 = out.normF4.Data;
 
+idx = find(tSpatialContact >= 1);
+
 figure(1)
 
 subplot(2, 1, 1)
 plot(tSpatialContact, ...
 squeeze(normFHeel1(3,1,:)), 'Color', [1, 0.2, 0.6], 'LineWidth', 1.5)
 hold on;
-plot(tSpatialContact, ...
-squeeze(normFToe1(3,1,:)), 'b--', 'LineWidth', 1.5)
+plot(tSpatialContact(idx), ...
+squeeze(normFToe1(3,1,idx)), 'b--', 'LineWidth', 1.5)
 title('Normal Force at Lower Link Base Contact - Leg 1')
 xlabel('Time (s)')
 ylabel('Normal Force (N)')
@@ -46,8 +48,31 @@ grid on;
 saveas(gcf, 'legNormFs.png')
 
 FTotal = normF1(3,1,end) + normF2(3,1,end) + normF3(3,1,end) + ...
-normF4(3,1,end) + normFHeel1(3,1,end) + normFToe1(3,1,end) + ...
-normFCentre1(3,1,end);
+    normF4(3,1,end) + normFHeel1(3,1,end) + normFToe1(3,1,end) + ...
+    normFCentre1(3,1,end);
 
 disp(['Total normal force exerted through leg 1: ', num2str(FTotal), ' N'])
+
+figure(2)
+
+plot(tSpatialContact(idx), squeeze(normF1(3,1,idx)))
+hold on;
+plot(tSpatialContact(idx), squeeze(normF2(3,1,idx)))
+hold on;
+plot(tSpatialContact(idx), squeeze(normF3(3,1,idx)))
+hold on;
+plot(tSpatialContact(idx), squeeze(normF4(3,1,idx)))
+hold on;
+plot(tSpatialContact(idx), squeeze(normFToe1(3,1,idx)))
+hold on;
+plot(tSpatialContact(idx), squeeze(normFHeel1(3,1,idx)))
+hold on;
+plot(tSpatialContact(idx), squeeze(normFCentre1(3,1,idx)))
+title('Normal Force at Lower Link Base Contact - Leg 1')
+legend('1', '2', '3', '4', 'Front', 'Back', 'Centre')
+xlabel('Time (s)')
+ylabel('Normal Force (N)')
+grid on
+
+saveas(gcf, 'leg1AllNormFs11.png')
 
