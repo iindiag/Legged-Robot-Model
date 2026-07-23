@@ -1,44 +1,49 @@
 clc, clearvars
 
+% README: Must run leggedRobotSim.m and the Simulink simulation and
+% SimulinkResults.m file before running this file for the models to be 
+% compared with the same used parameters.
+
 % Loading the saved results from the models
 load('dynamicModelResults.mat');
 load('SimulinkResults.mat');
 
 % Plotting the results against each other for qualitative analysis
 figure(1)
-clf
 
-subplot(3, 1, 1)
-plot(t_ode, currentLog_ode(:,2), '--', 'LineWidth', 1.5)
+plot(t_ode, currentLog_ode(:,2), 'LineWidth', 1.5)
 hold on;
-plot(t, i, 'Color', [0.98 0.76 0.72], 'LineWidth', 1.5)
+plot(t, i, '--', 'Color', [0.98 0.76 0.72], 'LineWidth', 2.5)
 xlabel('Time (s)')
 ylabel('Current (Amps)')
 legend('Dynamics Model', 'Simulink Model')
-title('Dynamics Model vs Simulink Model - PD Controller Output')
+title('PD Controller Output - i(t)')
 grid on
+saveas(gcf, 'i(t)Verf.png')
 
-subplot(3, 1, 2)
-plot(t_ode, omegaKnee_ode, '--', 'LineWidth', 1.5)
+figure(2)
+plot(t_ode, omegaKnee_ode, 'LineWidth', 1.5)
 hold on;
-plot(t, omega, 'Color', [0.98 0.76 0.72], 'LineWidth', 1.5)
+plot(t, omega, '--', 'Color', [0.98 0.76 0.72], 'LineWidth', 2.5)
 xlabel('Time (s)')
 ylabel('Angular Velocity (rad/s)')
 legend('Dynamics Model', 'Simulink Model')
-title(['Dynamics Model vs Simulink Model - Angular Velocity of the' ...
+title(['Angular Velocity of the ' ...
     'Knee Joint'])
 grid on
+saveas(gcf, 'omegaKneeVerf.png')
 
-subplot(3, 1, 3)
-plot(t_ode, C_zCoords_ode, '--', 'LineWidth', 1.5)
+figure(3)
+plot(t_ode, C_zCoords_ode, 'LineWidth', 1.5)
 hold on;
-plot(t, C_zCoords - 0.32, 'Color', [0.98 0.76 0.72], 'LineWidth', 1.5)
+plot(t, C_zCoords - 0.32, '--', 'Color', [0.98 0.76 0.72], 'LineWidth', 2.5)
 xlabel('Time (s)')
 ylabel('z Position (m)')
 legend('Dynamics Model', 'Simulink Model')
-title(['Dynamics Model vs Simulink Model - Measured z-Coordinate' ...
-    'of the Foot'])
+title(['z Position of the Centre Point of the Base of the ' ...
+    'Lower Link'])
 grid on
+saveas(gcf, 'zPositionVerf.png')
 
 % Computing RMSE, MAE and correlation coefficient
 

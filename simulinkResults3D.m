@@ -9,24 +9,45 @@ C_zCoords = out.C_z.Data; % The z-Coordinate of the centre of the foot
 tSpatialContact = out.normFHeel1.Time;
 normFHeel1 = out.normFHeel1.Data;
 normFToe1 = out.normFToe1.Data;
-normFHeel2 = out.normFHeel1.Data;
-normFToe2 = out.normFToe1.Data;
+normFHeel2 = out.normFHeel2.Data;
+normFToe2 = out.normFToe2.Data;
+normFCentre1 = out.normCentre1.Data;
+normFCentre2 = out.normCentre2.Data;
+
+normF1 = out.normF1.Data;
+normF2 = out.normF2.Data;
+normF3 = out.normF3.Data;
+normF4 = out.normF4.Data;
 
 figure(1)
-plot(tSpatialContact, squeeze(normFHeel1(3,1,:)), 'Color', [1, 0.2, 0.6])
+
+subplot(2, 1, 1)
+plot(tSpatialContact, ...
+squeeze(normFHeel1(3,1,:)), 'Color', [1, 0.2, 0.6], 'LineWidth', 1.5)
 hold on;
-plot(tSpatialContact, squeeze(normFToe1(3,1,:)), 'b')
-hold on;
-plot(tSpatialContact, squeeze(normFHeel2(3,1,:)), '--')
-hold on;
-plot(tSpatialContact, squeeze(normFToe2(3,1,:)), '--')
-title('Normal Force at Food-Ground Contact')
+plot(tSpatialContact, ...
+squeeze(normFToe1(3,1,:)), 'b--', 'LineWidth', 1.5)
+title('Normal Force at Lower Link Base Contact - Leg 1')
 xlabel('Time (s)')
 ylabel('Normal Force (N)')
-legend('Heel - Leg 1', 'Toes - Leg 1', 'Heel - Leg 2', 'Toes - Leg 2')
+legend('Back', 'Front')
 grid on;
 
-totalNormF = normFHeel1(3,1,end) + normFToe1(3,1,end) + ...
-    normFHeel2(3,1,end) + normFToe2(3,1,end);
-disp(totalNormF)
+subplot(2, 1, 2)
+plot(tSpatialContact, squeeze(normFHeel2(3,1,:)), 'LineWidth', 1.5)
+hold on;
+plot(tSpatialContact, squeeze(normFToe2(3,1,:)), '--', 'LineWidth', 1.5)
+title('Normal Force at Lower Link Base Contact - Leg 2')
+xlabel('Time (s)')
+ylabel('Normal Force (N)')
+legend('Back', 'Front')
+grid on;
+
+saveas(gcf, 'legNormFs.png')
+
+FTotal = normF1(3,1,end) + normF2(3,1,end) + normF3(3,1,end) + ...
+normF4(3,1,end) + normFHeel1(3,1,end) + normFToe1(3,1,end) + ...
+normFCentre1(3,1,end);
+
+disp(['Total normal force exerted through leg 1: ', num2str(FTotal), ' N'])
 
