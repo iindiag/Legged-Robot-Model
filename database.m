@@ -51,6 +51,8 @@ function db = database() % To call func in another script, must match the
     % 3D Simulink sim params.
     db.threeD.sensorRadius = 0.006;
     db.threeD.feetMass = 0.2;
+    db.threeD.staticFrictionCoeff = 0.5;
+    db.threeD.dynamicFrictionCoeff = 0.3;
     
     % MC params.
     db.MC.B = 100;
