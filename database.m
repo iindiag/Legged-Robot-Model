@@ -47,6 +47,8 @@ function db = database() % To call func in another script, must match the
     db.PDC.hipK_pr = 150;
     db.PDC.kneeK_d = 50;
     db.PDC.kneeK_p = 150;
+    % -> all values for gains are the default values for the initial set of
+    % results produced
 
     % 3D Simulink sim params.
     db.threeD.sensorRadius = 0.006;

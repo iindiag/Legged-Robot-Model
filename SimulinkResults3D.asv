@@ -188,7 +188,7 @@ ylabel('Normal Force (N)')
 legend('Back', 'Front')
 grid on;
 
-saveas(gcf, 'legNormFs.png')
+%saveas(gcf, 'legNormFs.png')
 
 % Total normal force through leg 1
 FTotal = normF1(3,1,end) + normF2(3,1,end) + normF3(3,1,end) + ...
@@ -220,7 +220,7 @@ xlabel('Time (s)')
 ylabel('Normal Force (N)')
 grid on
 
-saveas(gcf, 'PiecewiseAllNormFs.png')
+%saveas(gcf, 'SineAllNormFs.png')
 
 
 % Plotting the current, angular velocity and z coordinate for the 'foot' of
@@ -235,7 +235,7 @@ title('PD Controller Output - i(t)')
 grid on
 
 subplot(3,1,2)
-plot(t, omega, 'Color', [0.5 0 0.5], 'LineWidth', 1.2)
+plot(t, omegaKnee, 'Color', [0.5 0 0.5], 'LineWidth', 1.2)
 xlabel('Time (s)')
 ylabel('Angular Velocity (rad/s)')
 title(['Angular Velocity of the ' ...
@@ -250,7 +250,7 @@ title(['z Position of the Centre Point of the Base of the ' ...
     'Lower Link'])
 grid on
 
-saveas(gcf, 'Piecewise3Metrics.png')
+%saveas(gcf, 'Sine3Metrics.png')
 
 
 % Computing the power, energy and COT
@@ -263,23 +263,32 @@ COT = CostOfTransport(ELog, m, g, dNet);
 figure(4)
 
 subplot(2,1,1)
-plot(t, dLog);
+plot(t, abs(dLog), 'LineWidth', 1.5, 'Color', [0.62 0.72 0.54]);
 xlabel('Time (s)')
 ylabel('Distance (m)')
-title('Distance travelled ')
-
-subplot(2,1,1)
-plot(t, dLog);
-xlabel('Time (s)')
+title('Distance Travelled over Time')
 grid on
 
+disp(['Total displacement: ', num2str(dNet), ' m'])
+
+subplot(2,1,2)
+plot(t, COT, 'LineWidth', 1.5, 'Color', [0.13 0.45 0.5]);
+xlabel('Time (s)')
+ylabel('Cost of Transport (-)')
+title('Cost of Transport over Time')
+grid on
+
+%saveas(gcf, 'SineDistAndCOT.png')
+
 % Computing the MC
-MCVals = MCCalculation(B, H, C_zCoords, iKnee, omega);
+MCVals = MCCalculation(B, H, C_zCoords, iKnee, omegaKnee);
 MCSmooth = smoothdata(MCVals, 'gaussian', 5);
 
-figure(6)
-plot(t(1:end-1), MCSmooth, 'LineWidth', 1.5);
+figure(5)
+plot(t(1:end-1), MCVals, 'LineWidth', 1, 'Color', [0.0 0.0 0.5]);
 xlabel('Time (s)');
-ylabel('Morphological Computation (MC)');
-title('Smoothed Morphological Computation Over Time');
+ylabel('Morphological Computation (-)');
+title('Morphological Computation over Time');
 grid on;
+
+%saveas(gcf, 'SineMC.png')
