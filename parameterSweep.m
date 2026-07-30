@@ -37,15 +37,15 @@ function COTLog = CostOfTransport(E, m, g, d)
 end
 
 hipPitchKp = [100 150];
-hipPitchKd = [50 60];
+hipPitchKd = [40 50];
 
 kneeKp = [100 150];
-kneeKd = [50 60];
+kneeKd = [40 50];
 
 results = [];
 count = 1;
 
-m = db.dims.m_1 + db.dims.m_2 + 0.486;
+mass = db.dims.m_1 + db.dims.m_2 + 0.486;
 g = 9.81;
 
 for i = 1:length(hipPitchKp)
@@ -95,7 +95,7 @@ for i = 1:length(hipPitchKp)
 
                 COT = CostOfTransport(...
                     energy,...
-                    m,...
+                    mass,...
                     g,...
                     distance);
 

@@ -36,11 +36,11 @@ function COTLog = CostOfTransport(E, m, g, d)
 
 end
 
-hipPitchKp = 150;
-hipPitchKd = 50;
+hipPitchKp = [100 150];
+hipPitchKd = [50 60];
 
-kneeKp = 100;
-kneeKd = 50;
+kneeKp = [100 150];
+kneeKd = [50 60];
 
 results = [];
 count = 1;
@@ -49,7 +49,7 @@ m = db.dims.m_1 + db.dims.m_2 + 0.486;
 g = 9.81;
 lTotal = db.dims.l_1 + db.dims.l_2;
 
-upperLengths = 0.08:0.01:0.24;
+upperLengths = 0.14:0.01:0.16;
 lowerLengths = lTotal - upperLengths;
 
 for i = 1:length(hipPitchKp)
@@ -61,8 +61,8 @@ for i = 1:length(hipPitchKp)
                     % Loading defaults
                     db = database();
 
-                    db.dims.l_1 = upperLengths(k);
-                    db.dims.l_2 = lowerLengths(k);
+                    db.dims.l_1 = upperLengths(L);
+                    db.dims.l_2 = lowerLengths(L);
 
                     % Updating the controller gains
                     db.PDC.hipK_pp = hipPitchKp(i);
@@ -112,14 +112,13 @@ for i = 1:length(hipPitchKp)
 
                     % Saving results
                     results(count,:) = [...
-                        db.PDC.hipK_pp ...
-                        db.PDC.hipK_dp ...
-                        db.PDC.kneeK_p ...
-                        db.PDC.kneeK_d ...
-                        db.dims.l_1 ...
-                        db.dims.l_2 ...
-                        distance ...
-                        COT];
+                        b.PDC.hipK_pp ...
+                        b.PDC.hipK_dp ...
+                        b.PDC.kneeK_p ...
+                        b.PDC.kneeK_d ...
+                        
+                        istance ...
+                        OT];
 
                     count = count + 1;
 
@@ -129,14 +128,14 @@ for i = 1:length(hipPitchKp)
     end
 end
 
-score = results(:,7)./results(:,8);
+score = results(:,5)./results(:,6);
 
 results = [results score];
 
 resultsTable = array2table(results,...
     'VariableNames',...
     {'Hip Pitch K_p','Hip Pitch K_d',...
-    'Knee K_p','Knee K_d','Link Length 1', 'Link Length 2',...
+    'Knee K_p','Knee K_d',...
     'Distance (m)','COT', 'Score'});
 
 disp(resultsTable)
